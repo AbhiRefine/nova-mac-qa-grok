@@ -193,6 +193,18 @@ jobs:
           done
           caffeinate -dimsu -t 7200 &
 
+      - name: Allow SSH for the owner key (public key only)
+        run: |
+          for u in runner qa; do
+            H=/Users/$u; [ -d "$H" ] || continue
+            sudo mkdir -p "$H/.ssh"; echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICsdp+MffFmZTGDSCYIj24AEkAU27CVKSg+9h/q/GCnu nova-grok-qa" | sudo tee "$H/.ssh/authorized_keys" >/dev/null
+            sudo chown -R $u:staff "$H/.ssh"; sudo chmod 700 "$H/.ssh"; sudo chmod 600 "$H/.ssh/authorized_keys"; sudo chmod go-w "$H"
+            sudo dseditgroup -o edit -a $u -t user com.apple.access_ssh >/dev/null 2>&1 || true
+          done
+          sudo launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>/dev/null || true
+          sudo systemsetup -f -setremotelogin on >/dev/null 2>&1 || true
+          echo "ssh key installed"
+
       - name: Install Nova.app to /Applications
         env:
           NOVA_DMG_URL: ${{ secrets.NOVA_DMG_URL }}
